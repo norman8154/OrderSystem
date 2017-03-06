@@ -23,7 +23,7 @@ public class User implements Parcelable{
         this.email = in.readString();
         this.phone = in.readString();
         this.addr = in.readString();
-        this.isAdmin = 0;
+        this.isAdmin = in.readInt();
     }
 
     public String getName() {
@@ -62,6 +62,10 @@ public class User implements Parcelable{
         return isAdmin;
     }
 
+    public void setIsAdmin(int isAdmin){
+        this.isAdmin = isAdmin;
+    }
+
     @Override
     public int describeContents() {
         return 0;
@@ -73,6 +77,7 @@ public class User implements Parcelable{
         dest.writeString(this.email);
         dest.writeString(this.phone);
         dest.writeString(this.addr);
+        dest.writeInt(this.isAdmin);
     }
 
     public static final Parcelable.Creator CREATOR = new Parcelable.Creator() {

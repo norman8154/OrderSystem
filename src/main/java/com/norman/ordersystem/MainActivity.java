@@ -171,6 +171,7 @@ public class MainActivity extends AppCompatActivity implements
     }
 
     private void get_Item_info(){
+        items = new HashMap<>();
         DatabaseReference ds_ref = FirebaseDatabase.getInstance().getReference("Items");
         ds_ref.addValueEventListener(new ValueEventListener() {
             @Override

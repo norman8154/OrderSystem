@@ -188,7 +188,6 @@ public class Item_info_change_Fragment extends Fragment {
                 dialog_check.setButton(DialogInterface.BUTTON_POSITIVE, "確定", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialogInterface, int i) {
-                        final DatabaseReference databaseReference = FirebaseDatabase.getInstance().getReference("Items").child(old_name);
                         FirebaseStorage storage = FirebaseStorage.getInstance();
                         StorageReference storageRef = storage.getReferenceFromUrl("gs://ordersystem-970fe.appspot.com");
                         StorageReference ImageRef = storageRef.child("images/" + old_name + ".jpg");
@@ -196,7 +195,7 @@ public class Item_info_change_Fragment extends Fragment {
                         ImageRef.delete().addOnSuccessListener(new OnSuccessListener<Void>() {
                             @Override
                             public void onSuccess(Void aVoid) {
-                                databaseReference.removeValue();
+                                delete_item();
                                 final AlertDialog dialog_delete = new AlertDialog.Builder(getContext()).create();
                                 dialog_delete.setMessage("刪除成功！");
                                 dialog_delete.setButton(DialogInterface.BUTTON_POSITIVE, "確定", new DialogInterface.OnClickListener() {
@@ -360,6 +359,28 @@ public class Item_info_change_Fragment extends Fragment {
         }
 
         return result;
+    }
+
+    public void delete_item(){
+        final DatabaseReference databaseReference = FirebaseDatabase.getInstance().getReference("Items");
+        databaseReference.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot dataSnapshot) {
+                for(final DataSnapshot ds : dataSnapshot.getChildren()){
+                    if(ds.hasChild(item.getName())){
+                        DatabaseReference todelete_item = FirebaseDatabase.getInstance().getReference("Items").child(ds.getKey()).child(old_name);
+                        todelete_item.removeValue();
+                        mListener.onItemAdded();
+                        break;
+                    }
+                }
+            }
+
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+
+            }
+        });
     }
 
     public void update_info(){
