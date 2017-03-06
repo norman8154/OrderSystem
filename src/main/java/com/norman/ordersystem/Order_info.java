@@ -28,6 +28,7 @@ public class Order_info implements Parcelable{
         this.addr = in.readString();
         this.uid = in.readString();
         this.time = in.readString();
+        this.approach = in.readString();
         in.readMap(this.items,Integer.class.getClassLoader());
     }
 
@@ -99,6 +100,7 @@ public class Order_info implements Parcelable{
         dest.writeString(this.addr);
         dest.writeString(this.uid);
         dest.writeString(this.time);
+        dest.writeString(this.approach);
         dest.writeMap(this.items);
     }
 

@@ -438,7 +438,11 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
                     DatabaseReference mDatabase = FirebaseDatabase.getInstance().getReference("users");
                     Log.d("User id","client uid:" + uid);
 
-                    User user = new User(name,email,phone,addr);
+                    User user = new User();
+                    user.setName(name);
+                    user.setEmail(email);
+                    user.setPhone(phone);
+                    user.setAddr(addr);
 
                     mDatabase.child(uid).setValue(user);
 

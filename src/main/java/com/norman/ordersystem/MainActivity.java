@@ -64,7 +64,7 @@ public class MainActivity extends AppCompatActivity implements
     private Toolbar toolbar;
     private FrameLayout flFlag;
     ImageButton btn_cart;
-    final int REQUEST_LOGIN = 1;
+    final int REQUEST_LOGIN = 1,REQUEST_LOADING = 2;
     String frag_tag;
     int item_done = 0;
     public User user_info = null;
@@ -82,15 +82,13 @@ public class MainActivity extends AppCompatActivity implements
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         shopping_cart = new HashMap<String, Double[]>();
-        items = new HashMap<>();
 
-        Thread thread = new Thread(){
-            @Override
-            public void run(){
-                get_Item_info();
-            }
-        };
-        thread.start();
+        toolbar = (Toolbar) findViewById(R.id.toolbar);
+        dlDrawer = (DrawerLayout) findViewById(R.id.dlDrawer);
+        lvDrawerItems = (ListView) findViewById(R.id.lvDrawerItems);
+        btn_cart = (ImageButton) findViewById(R.id.btn_cart);
+        setSupportActionBar(toolbar);
+        toolbar.setTitleTextAppearance(this,getResources().getInteger(R.integer.action_menu_item_text_size));
 
         auth = FirebaseAuth.getInstance();
         authStateListener = new FirebaseAuth.AuthStateListener() {
@@ -100,21 +98,20 @@ public class MainActivity extends AppCompatActivity implements
                 if (user==null) {
                     startActivityForResult(new Intent(MainActivity.this, LoginActivity.class), REQUEST_LOGIN);
                 }else{
-                    uid= user.getUid();
+                    if(lvitems == null){
+                        Intent intent = new Intent(MainActivity.this, LoadingActivity.class);
+                        Bundle bundle = new Bundle();
 
-                    if(lvitems == null) {
-                        get_user_info(uid);
+                        uid = user.getUid();
+                        bundle.putString("uid",uid);
+
+                        intent.putExtras(bundle);
+                        startActivityForResult(intent, REQUEST_LOADING);
                     }
+
                 }
             }
         };
-
-        toolbar = (Toolbar) findViewById(R.id.toolbar);
-        dlDrawer = (DrawerLayout) findViewById(R.id.dlDrawer);
-        lvDrawerItems = (ListView) findViewById(R.id.lvDrawerItems);
-        btn_cart = (ImageButton) findViewById(R.id.btn_cart);
-        setSupportActionBar(toolbar);
-        toolbar.setTitleTextAppearance(this,getResources().getInteger(R.integer.action_menu_item_text_size));
 
         /*Display display = getWindowManager().getDefaultDisplay();
         Point size = new Point();
@@ -173,68 +170,6 @@ public class MainActivity extends AppCompatActivity implements
         }});
     }
 
-    private void get_user_info(String uid){
-        DatabaseReference ds_ref = FirebaseDatabase.getInstance().getReference("users").child(uid);
-        ds_ref.addValueEventListener(new ValueEventListener() {
-            @Override
-            public void onDataChange(DataSnapshot dataSnapshot) {
-                    user_info = dataSnapshot.getValue(User.class);
-
-                    Log.e("data",dataSnapshot.toString());
-
-                    if(user_info.isAdmin == 0){
-                        lvitems = new String[6];
-                        lvitems[0] = "首頁";
-                        lvitems[1] = "購物車";
-                        lvitems[2] = "個人資料";
-                        lvitems[3] = "處理中訂單";
-                        lvitems[4] = "歷史訂單";
-                        lvitems[5] = "登出";
-                        btn_cart.setVisibility(View.VISIBLE);
-                        btn_cart.setEnabled(true);
-                    }else{
-                        lvitems = new String[9];
-                        lvitems[0] = "首頁";
-                        lvitems[1] = "處理中訂單";
-                        lvitems[2] = "已運送訂單";
-                        lvitems[3] = "已完成訂單";
-                        lvitems[4] = "新增商品";
-                        lvitems[5] = "商品管理";
-                        lvitems[6] = "待出貨清單";
-                        lvitems[7] = "月銷售量";
-                        lvitems[8] = "登出";
-                        btn_cart.setVisibility(View.INVISIBLE);
-                        btn_cart.setEnabled(false);
-                    }
-                    lvDrawerItems = (ListView) findViewById(R.id.lvDrawerItems);
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            ArrayAdapter<String> adapter = new ArrayAdapter<String>(MainActivity.this, android.R.layout.simple_list_item_1, lvitems);
-                            lvDrawerItems.setAdapter(adapter);
-                        }
-                    });
-
-                    while(item_done == 0){
-
-                    }
-
-                    Fragment fragment = get_fragment_info(0);
-
-                    mFragmentManager = getSupportFragmentManager();
-                    mFragmentTransaction = mFragmentManager.beginTransaction();
-                    mFragmentTransaction.replace(R.id.flFlag, fragment,"首頁");
-                    mFragmentTransaction.addToBackStack(null).commit();
-                    dlDrawer.closeDrawer(lvDrawerItems);
-            }
-
-            @Override
-            public void onCancelled(DatabaseError databaseError) {
-                Log.d("讀取失敗","read User info failed.");
-            }
-        });
-    }
-
     private void get_Item_info(){
         DatabaseReference ds_ref = FirebaseDatabase.getInstance().getReference("Items");
         ds_ref.addValueEventListener(new ValueEventListener() {
@@ -249,7 +184,6 @@ public class MainActivity extends AppCompatActivity implements
                     }
                     items.put(ds_cate.getKey(),item_temp);
                 }
-                item_done = 1;
             }
 
             @Override
@@ -284,7 +218,7 @@ public class MainActivity extends AppCompatActivity implements
     private Fragment get_fragment_info(int position){
         Fragment fragment;
         Bundle b = new Bundle();
-        switch (user_info.isAdmin){
+        switch (user_info.getIsAdmin()){
             case 0:
                 switch (position){
                     case 0:
@@ -292,7 +226,7 @@ public class MainActivity extends AppCompatActivity implements
                         frag_tag = "首頁";
                         toolbar.setTitle("首頁");
                         b.putSerializable("Items",items);
-                        b.putInt("isAdmin",user_info.isAdmin);
+                        b.putInt("isAdmin",user_info.getIsAdmin());
                         fragment.setArguments(b);
 
                         return fragment;
@@ -302,9 +236,9 @@ public class MainActivity extends AppCompatActivity implements
                         toolbar.setTitle("購物車");
                         b.putSerializable("購物車",shopping_cart);
                         b.putString("UID",uid);
-                        b.putString("姓名",user_info.name);
-                        b.putString("電話",user_info.phone);
-                        b.putString("地址",user_info.addr);
+                        b.putString("姓名",user_info.getName());
+                        b.putString("電話",user_info.getPhone());
+                        b.putString("地址",user_info.getAddr());
                         fragment.setArguments(b);
                         btn_cart.setVisibility(View.INVISIBLE);
                         btn_cart.setEnabled(false);
@@ -312,9 +246,9 @@ public class MainActivity extends AppCompatActivity implements
                         return fragment;
                     case 2:
                         fragment = new User_infoFragment();
-                        b.putString("name",user_info.name);
-                        b.putString("phone",user_info.phone);
-                        b.putString("addr",user_info.addr);
+                        b.putString("name",user_info.getName());
+                        b.putString("phone",user_info.getPhone());
+                        b.putString("addr",user_info.getAddr());
                         fragment.setArguments(b);
                         toolbar.setTitle("個人資料");
                         frag_tag = "個人資料";
@@ -360,7 +294,7 @@ public class MainActivity extends AppCompatActivity implements
                         fragment = new MainFragment();
                         toolbar.setTitle("首頁");
                         b.putSerializable("Items",items);
-                        b.putInt("isAdmin",user_info.isAdmin);
+                        b.putInt("isAdmin",user_info.getIsAdmin());
                         fragment.setArguments(b);
                         frag_tag = "首頁";
 
@@ -625,14 +559,38 @@ public class MainActivity extends AppCompatActivity implements
 
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode,resultCode,data);
-        /*for (Fragment fragment : getSupportFragmentManager().getFragments()) {
-            fragment.onActivityResult(requestCode, resultCode, data);
-        }*/
         switch (requestCode) {
             case REQUEST_LOGIN:
                 if (resultCode != RESULT_OK){
                     finish();
                 }
+                break;
+            case REQUEST_LOADING:
+                Bundle bundle = data.getExtras();
+
+                items = (HashMap<String,Item[]>) bundle.getSerializable("items");
+                lvitems = bundle.getStringArray("lvitems");
+                user_info = bundle.getParcelable("info");
+
+                if(user_info.getIsAdmin() == 0){
+                    btn_cart.setVisibility(View.VISIBLE);
+                    btn_cart.setEnabled(true);
+                }else{
+                    btn_cart.setVisibility(View.INVISIBLE);
+                    btn_cart.setEnabled(false);
+                }
+
+                lvDrawerItems = (ListView) findViewById(R.id.lvDrawerItems);
+                ArrayAdapter<String> adapter = new ArrayAdapter<String>(MainActivity.this, android.R.layout.simple_list_item_1, lvitems);
+                lvDrawerItems.setAdapter(adapter);
+
+                Fragment fragment = get_fragment_info(0);
+
+                mFragmentManager = getSupportFragmentManager();
+                mFragmentTransaction = mFragmentManager.beginTransaction();
+                mFragmentTransaction.replace(R.id.flFlag, fragment,"首頁");
+                mFragmentTransaction.addToBackStack(null).commit();
+                dlDrawer.closeDrawer(lvDrawerItems);
                 break;
         }
     }
